@@ -27,4 +27,5 @@ The project leverages several popular open-source technologies to create an end-
 - FEAST, a feature store, reads the processed data from *Offline store (Postgres) or Online Store (Redis)* to serve the feature data to machine learning models and online applications. 
 **Note:** 
 - The processed data in MINIO's Silver Zone or feature-engineered data in Postgres (offline storage) can then be queried and analyzed using Trino, a distributed SQL query engine.
-## Components prepare:
+
+## Component Preparation:
