@@ -24,7 +24,8 @@ The project leverages several popular open-source technologies to create an end-
 - Apache Spark, a distributed processing engine, reads the raw data from MINIO's Bronze Zone, performs batch processing tasks like data cleaning, transformation, and feature engineering, and outputs the processed data to MINIO's Silver Zone, also known as the "Lake House."
 - The data is further processed in batch processing mode by Spark to generate feature data, which is then ingested into the Postgres (Gold zone/ Feast offline store).
 - From Kafka, the raw data is streaming processed and loaded directly into the Redis (Feast online store). 
-- FEAST, a feature store, reads the processed data from *Offline store (Postgres) or Online Store (Redis)* to serve the feature data to machine learning models and online applications. 
+- FEAST, a feature store, reads the processed data from *Offline store (Postgres) or Online Store (Redis)* to serve the feature data to machine learning models and online applications.
+
 **Note:** 
 - The processed data in MINIO's Silver Zone or feature-engineered data in Postgres (offline storage) can then be queried and analyzed using Trino, a distributed SQL query engine.
 
