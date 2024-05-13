@@ -1,0 +1,42 @@
+version: '3.8'
+services:
+  postgresql:
+    image: 'postgres:latest'
+    command:
+      - postgres
+      - '-c'
+      - wal_level=logical
+    container_name: alicpp-postgresql
+    healthcheck:
+      test:
+        - CMD
+        - psql
+        - '-U'
+        - k6
+        - '-c'
+        - SELECT 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_DB=k6
+      - POSTGRES_USER=k6
+      - POSTGRES_PASSWORD=k6
+    volumes:
+      - 'alicpp_postgres_data:/var/lib/postgresql/data'
+  redis:
+    image: redis:latest
+    container_name: alicpp-redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    restart: always
+volumes:
+  alicpp_postgres_data: null
