@@ -1,3 +1,7 @@
+alicpp_raw_data:
+  folder_path_train: ../data/train
+  folder_path_test: ../data/test
+
 minIO_config:
   endpoint: localhost:9000
   access_key: minio_access_key
