@@ -2,3 +2,5 @@
 pyspark==3.3.2
 minio==7.2.3
 PyYAML==6.0.1
+numpy==1.26.3
+tqdm==4.66.1
