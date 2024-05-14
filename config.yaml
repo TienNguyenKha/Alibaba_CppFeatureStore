@@ -6,11 +6,11 @@ minIO_config:
   endpoint: localhost:9000
   access_key: minio_access_key
   secret_key: minio_secret_key
-  bronze_bucket_name: bronze-merlin
+  bronze_bucket_name: bronze-alicpp
   bronze_folder_name_train: train
   bronze_folder_name_test: test
   folder_common: commonfeatures
-  silver_bucket_name: silver-merlin
+  silver_bucket_name: silver-alicpp
   silver_folder_name_train: train
   silver_folder_name_test: test
   silver_folder_name_train_1M: train_1M # for fast testing
