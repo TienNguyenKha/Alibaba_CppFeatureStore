@@ -8,8 +8,8 @@ from typing import Optional, Union
 
 import numpy as np
 from minio import Minio
-from pyspark import SparkContext
 from pyspark.sql import SparkSession
+from pyspark import SparkContext
 from pyspark.sql.functions import col, udf, when
 from pyspark.sql.types import IntegerType, MapType, StringType
 from tqdm import tqdm
@@ -37,7 +37,7 @@ spark = (
         "spark.jars",
         "../jars/aws-java-sdk-bundle-1.12.262.jar,../jars/hadoop-aws-3.3.4.jar",
     )
-    .config("spark.hadoop.fs.s3a.endpoint", f'{datalake_cfg["endpoint"]}')
+    .config("spark.hadoop.fs.s3a.endpoint", f'http://{datalake_cfg["endpoint"]}')
     .config("spark.hadoop.fs.s3a.access.key", f'{datalake_cfg["access_key"]}')
     .config("spark.hadoop.fs.s3a.secret.key", f'{datalake_cfg["secret_key"]}')
     .config("spark.hadoop.fs.s3a.path.style.access", "true")
@@ -142,7 +142,7 @@ def _convert_data_spark(
                 os.path.basename(common_features_path),
             ),
         )
-        my_logger.info(f"The {common_features_path} already exists in the bucket")
+        # my_logger.info(f"The {common_features_path} already exists in the bucket")
         # load object:
         response = client.get_object(
             datalake_cfg["bronze_bucket_name"],
@@ -334,7 +334,7 @@ def prepare_aliccp(
 
     if convert_train:
         # my_logger.info(f"Converting train csv file ...")
-        logger.info(f"Converting train csv file ...")
+        logger.info("Converting train csv file ...")
         _convert_data_spark(
             spark,
             str(data_dir),
@@ -345,7 +345,7 @@ def prepare_aliccp(
 
     if convert_test:
         # my_logger.info(f"Converting test csv file ...")
-        logger.info(f"Converting test csv file ...")
+        logger.info("Converting test csv file ...")
         _convert_data_spark(
             spark,
             str(data_dir),

@@ -37,7 +37,7 @@ spark = (
         "spark.jars",
         "../jars/aws-java-sdk-bundle-1.12.262.jar,../jars/hadoop-aws-3.3.4.jar,../jars/postgresql-42.6.0.jar",
     )
-    .config("spark.hadoop.fs.s3a.endpoint", f'{datalake_cfg["endpoint"]}')
+    .config("spark.hadoop.fs.s3a.endpoint", f'http://{datalake_cfg["endpoint"]}')
     .config("spark.hadoop.fs.s3a.access.key", f'{datalake_cfg["access_key"]}')
     .config("spark.hadoop.fs.s3a.secret.key", f'{datalake_cfg["secret_key"]}')
     .config("spark.hadoop.fs.s3a.path.style.access", "true")
