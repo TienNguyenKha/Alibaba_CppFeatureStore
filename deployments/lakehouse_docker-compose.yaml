@@ -71,7 +71,7 @@ services:
     container_name: datalake-minio
     hostname: minio
     ports:
-      # - "9000:9000"
+      - "9000:9000"
       - "9001:9001"
     volumes:
       - minio_storage:/data
