@@ -1,18 +1,20 @@
-import os
+import sys
+sys.path.append("../..")
+from utils.helpers import load_cfg
 
-from dotenv import load_dotenv
 from postgresql_client import PostgresSQLClient
 
-load_dotenv()
 
-
+CFG_FILE = "../config.yaml"
 def main():
+    cfg = load_cfg(CFG_FILE)
+    postgre_config = cfg["Postgres_config"]
     pc = PostgresSQLClient(
-        host="34.65.156.139",
-        database=os.getenv("POSTGRES_DB"),
-        user=os.getenv("POSTGRES_USER"),
-        password=os.getenv("POSTGRES_PASSWORD"),
-        port=5432
+        host=postgre_config["POSTGRES_HOST"],
+        database=postgre_config["POSTGRES_DB"],
+        user=postgre_config["POSTGRES_USER"],
+        password=postgre_config["POSTGRES_PASSWORD"],
+        port=postgre_config["POSTGRES_PORT"]
     )
 
     # Create alicpp table
