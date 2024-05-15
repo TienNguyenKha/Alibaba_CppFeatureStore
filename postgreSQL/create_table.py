@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../..")
+sys.path.append("..")
 from utils.helpers import load_cfg
 
 from postgresql_client import PostgresSQLClient
