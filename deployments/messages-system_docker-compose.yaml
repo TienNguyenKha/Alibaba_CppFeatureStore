@@ -84,9 +84,7 @@ services:
       CONFLUENT_METRICS_TOPIC_REPLICATION: 1
 
   kafka_producer:
-    build:
-      context: kafka_producer
-      dockerfile: kafka_producer/Dockerfile
+    build: ../data_ingestion/kafka_producer
     depends_on:
       broker:
         condition: service_healthy
