@@ -203,14 +203,3 @@ def ingest_to_gold(
 ingest_to_gold(
     spark=spark, data_dir=f"s3a://{datalake_cfg['silver_bucket_name']}/", convert_train=True, convert_test=False
 )
-
-# # convert train df
-# Silver_convert_data_spark(
-#             spark,
-#             str(f"s3a://{datalake_cfg['silver_bucket_name']}/"),
-#             is_train=True)
-# # #convert test df
-# # Silver_convert_data_spark(
-# #             spark,
-# #             str(f"s3a://{datalake_cfg['silver_bucket_name']}/"),
-# #             is_train=False)
