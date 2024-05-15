@@ -1,5 +1,11 @@
+# importing module 
+import sys 
+  
+# appending a path 
+sys.path.append('../../')
+
 from minio import Minio
-from helpers import load_cfg
+from utils.helpers import load_cfg
 from glob import glob
 import os
 
@@ -41,6 +47,7 @@ def ingest_data(CFG_FILE ,upload_train=True, upload_test=True):
     # Create bucket if not exist.
     found = client.bucket_exists(bucket_name=datalake_cfg["bronze_bucket_name"])
     if not found:
+        print(f'Creating Bucket {datalake_cfg["bronze_bucket_name"]}...')
         client.make_bucket(bucket_name=datalake_cfg["bronze_bucket_name"])
     else:
         print(f'Bucket {datalake_cfg["bronze_bucket_name"]} already exists, skip creating!')
