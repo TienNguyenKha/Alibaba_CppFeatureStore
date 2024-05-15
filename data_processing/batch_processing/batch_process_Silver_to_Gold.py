@@ -2,25 +2,20 @@ import os
 import sys
 sys.path.append("../..")
 from utils.helpers import load_cfg
-
-import os
-import warnings
-warnings.filterwarnings('ignore')
-
-import shutil
-from minio import Minio
 from utils.logging import logger
 from pyspark import SparkContext
-from pyspark.sql import SparkSession
 
 from pyspark.sql import SparkSession
-from pyspark.ml.feature import StringIndexer, StandardScaler
+from pyspark.ml.feature import StringIndexer
 from pyspark.ml import Pipeline
 from pyspark.ml import PipelineModel
 from pyspark.sql.functions import current_timestamp
 from pyspark.sql.functions import col
-from pyspark.sql.functions import col, lit, randn, round, expr
-from pyspark.sql.functions import monotonically_increasing_id
+from pathlib import Path
+from typing import Union
+
+import warnings
+warnings.filterwarnings('ignore')
 
 ## Load config
 CFG_FILE = "../../config.yaml"
@@ -109,7 +104,6 @@ def Silver_convert_data_spark(
     ## Feature engineering
     #Categorify all categorical columns:
     if data_type == "train":
-        
         indexers = []
         # Create StringIndexer instances for each column
         for column in cat_cols:
@@ -121,12 +115,10 @@ def Silver_convert_data_spark(
 
         # Fit the Pipeline to the DataFrame
         pipeline_model = pipeline.fit(filtered_df)
-        pipeline_model.save('./pipeline_transform_model')
+        pipeline_model.save('../pipeline_transform_model')
     else:
-        pipeline_model= PipelineModel.load('./pipeline_transform_model')
-    
-    # When you rerun this file, you just need load the old pipeline and remember comment feature engineer Part
-    # pipeline_model= PipelineModel.load('./pipeline_transform_model')
+        # When you rerun this file, you just need load the old pipeline and remember comment feature engineer Part
+        pipeline_model= PipelineModel.load('../pipeline_transform_model')
     
 
     # Transform the data:
@@ -191,15 +183,34 @@ def Silver_convert_data_spark(
     print('clicked_1_df data vocab: ',emb_counts_clicked_1_df)# get vocabsize for each cols, for 2tower model training purpose
     print(clicked_1_df.count())
 
-
-
-# convert train df
-Silver_convert_data_spark(
+def ingest_to_gold(
+    spark: SparkSession,
+    data_dir: Union[str, Path],
+    convert_train: bool = True,
+    convert_test: bool = True,
+):
+    if convert_train:
+        Silver_convert_data_spark(
             spark,
-            str(f"s3a://{datalake_cfg['silver_bucket_name']}/"),
+            str(data_dir),
             is_train=True)
-# #convert test df
+    if convert_test:
+        Silver_convert_data_spark(
+            spark,
+            str(data_dir),
+            is_train=False)
+
+ingest_to_gold(
+    spark=spark, data_dir=f"s3a://{datalake_cfg['silver_bucket_name']}/", convert_train=True, convert_test=False
+)
+
+# # convert train df
 # Silver_convert_data_spark(
 #             spark,
 #             str(f"s3a://{datalake_cfg['silver_bucket_name']}/"),
-#             is_train=False)
+#             is_train=True)
+# # #convert test df
+# # Silver_convert_data_spark(
+# #             spark,
+# #             str(f"s3a://{datalake_cfg['silver_bucket_name']}/"),
+# #             is_train=False)
