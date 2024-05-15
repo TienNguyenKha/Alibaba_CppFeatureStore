@@ -1,12 +1,11 @@
 FROM python:3.8-slim
 
 # Copy app handler code
-COPY ./produce_json.py produce.py
 COPY ./data_sample.csv data_sample.csv
+COPY ./produce_json.py produce.py
 
 # Install dependencies
 RUN pip3 install kafka-python==2.0.2
-RUN pip3 install avro==1.11.1
 RUN pip3 install pandas==1.5.1
 RUN pip3 install pyarrow==10.0.1
 RUN pip3 install python-schema-registry-client==2.4.1

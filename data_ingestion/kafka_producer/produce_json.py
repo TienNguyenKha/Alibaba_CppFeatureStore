@@ -62,7 +62,7 @@ def create_streams(servers, topic_name):
         record = df.sample(1).to_dict(orient='records')[0]
         # Make event one more year recent to simulate fresher data
         record["created"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        record["datetime"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        record["datetime"] = record["created"] # for simple purpose
         # Send messages to this topic
         producer.send(
             topic_name, json.dumps(record, default=json_util.default).encode("utf-8")
@@ -71,7 +71,7 @@ def create_streams(servers, topic_name):
         sleep(2)
 
 
-def teardown_stream(topic_name, servers=["localhost:29092"]):
+def teardown_stream(topic_name, servers=["localhost:9092"]):
     try:
         admin = KafkaAdminClient(bootstrap_servers=servers)
         print(admin.delete_topics([topic_name]))
