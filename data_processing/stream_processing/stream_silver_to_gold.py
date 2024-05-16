@@ -12,21 +12,12 @@ from pyspark.ml import PipelineModel
 from pyspark.sql.functions import col, from_json, to_timestamp, udf
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType
 
-def load_pipeline_model():
-  """
-  Loads the pipeline model from disk.
-  """
-  return PipelineModel.load("../pipeline_transform_model")
 
 if __name__ == "__main__":
     spark = (
         SparkSession.builder.master("local[*]")
-        .config(
-            "spark.jars",
-            "../jars/aws-java-sdk-bundle-1.12.262.jar,../jars/hadoop-aws-3.3.4.jar,../jars/postgresql-42.6.0.jar",
-        )
-        .config("spark.jars.packages", "io.delta:delta-core_2.12:1.2.1")
-        .config("spark.jars.packages","org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1")
+        # .config("spark.jars.packages","org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1")
+        .config("spark.jars.packages","org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.1")
         .config(
             "spark.jars.repositories",
             "https://maven-central.storage-download.googleapis.com/maven2/",
@@ -40,6 +31,8 @@ if __name__ == "__main__":
     my_logger = log4jLogger.LogManager.getLogger("Preparing for Silver lake house")
     my_logger.setLevel(log4jLogger.Level.WARN)
     my_logger.info("Application is working well!")
+
+    pipeline_model= PipelineModel.load('../pipeline_transform_model')
 
     schema= StructType([
         StructField("user_id", DoubleType()),
@@ -84,13 +77,74 @@ if __name__ == "__main__":
         .option("startingOffsets", "earliest") \
         .load()
     parsed_df = kafka_df.select(from_json(col("value").cast("string"), schema).alias("value")).select("value.*")
-    formatted_datetime_df = parsed_df.withColumn("created", to_timestamp(col("created")))\
-                                     .withColumn("datetime", to_timestamp(col("datetime")))
-    formatted_datetime_df.printSchema()
+    formatted_df = parsed_df.withColumn("created", to_timestamp(col("created")))\
+                                     .withColumn("datetime", to_timestamp(col("datetime")))\
+                                     .withColumn("user_id_raw", col("user_id"))\
+                                     .withColumn("item_id_raw", col("item_id"))\
+                                    #  .na.drop()
+    
+    # Rename the columns iteratively (to original name)
+    transformed_df = pipeline_model.transform(formatted_df).drop(*cat_cols)
+    for column in cat_cols:
+        transformed_df = transformed_df.withColumnRenamed(f"{column}_index", column)
 
-    #transforming
-    custom_udf = udf(load_pipeline_model, PipelineModel)
-    transformed_df = formatted_datetime_df.withColumn("transformed_data", custom_udf().transform(formatted_datetime_df))
+    # serialize data:
+    user_df = transformed_df.selectExpr( """to_json(named_struct(
+                                                 'user_shops', user_shops,
+                                                 'user_profile', user_profile,
+                                                 'user_group', user_group,
+                                                 'user_gender', user_gender,
+                                                 'user_age', user_age,
+                                                 'user_consumption_2', user_consumption_2,
+                                                 'user_is_occupied', user_is_occupied,
+                                                 'user_geography', user_geography,
+                                                 'user_intentions', user_intentions,
+                                                 'user_brands', user_brands,
+                                                 'user_categories', user_categories,
+                                                 'user_id_raw', user_id_raw,
+                                                 'user_id', user_id,
+                                                 'created', created,
+                                                 'datetime', datetime
+                                                 )) as value""")
+
+    item_df = transformed_df.selectExpr( """to_json(named_struct(
+                                                 'item_category', item_category,
+                                                 'item_shop', item_shop,
+                                                 'item_brand', item_brand,
+                                                 'item_id_raw', item_id_raw,
+                                                 'item_id', item_id,
+                                                 'created', created,
+                                                 'datetime', datetime
+                                                 )) as value""")
+
+    userfeatures_writer_query = user_df \
+        .writeStream \
+        .queryName("userfeatures Writer") \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", "localhost:9092") \
+        .option("topic", "user_df_stream_data") \
+        .outputMode("append") \
+        .trigger(processingTime="10 second") \
+        .partitionBy("user_group")\
+        .option("checkpointLocation", "chk-point-dir/userfeatures") \
+        .start()
+    
+    itemfeatures_writer_query = item_df \
+        .writeStream \
+        .queryName("itemfeatures Writer") \
+        .format("kafka") \
+        .option("kafka.bootstrap.servers", "localhost:9092") \
+        .option("topic", "item_df_stream_data") \
+        .outputMode("append") \
+        .trigger(processingTime="10 second") \
+        .partitionBy("item_category")\
+        .option("checkpointLocation", "chk-point-dir/itemfeatures") \
+        .start()
+    
+    logger.info("Listening and writing to Kafka")
+    userfeatures_writer_query.awaitTermination()
+    itemfeatures_writer_query.awaitTermination()
+
     
    
 
