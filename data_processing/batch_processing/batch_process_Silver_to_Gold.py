@@ -13,6 +13,11 @@ from pyspark.sql.functions import current_timestamp
 from pyspark.sql.functions import col
 from pathlib import Path
 from typing import Union
+from pyspark.sql import Window
+import pyspark.sql.functions as F
+from pyspark.sql.types import LongType
+import random
+
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -59,6 +64,13 @@ my_logger = log4jLogger.LogManager.getLogger("Preparing for Silver lake house")
 my_logger.setLevel(log4jLogger.Level.WARN)
 my_logger.info("Application is working well!")
 
+# Define the UDF function
+def generate_random_timestamp():
+    start_date = 1711904400 # 0h 1/4/2024
+    end_date = 1713546000 # 0h 20/4/2024
+    random_timestamp = random.randint(start_date, end_date)
+    return random_timestamp
+
 
 def Silver_convert_data_spark(
     spark: SparkSession,
@@ -92,8 +104,8 @@ def Silver_convert_data_spark(
     #saving raw_id and add timestamp column
     filtered_df = filtered_df.withColumn("user_id_raw", col("user_id"))\
                              .withColumn("item_id_raw", col("item_id"))\
-                             .withColumn("created", current_timestamp())\
-                             .withColumn("datetime", current_timestamp())
+                            #  .withColumn("created", current_timestamp())\
+                            #  .withColumn("datetime", current_timestamp())
     
     ## Uncomment this part, If you wanna do a fast train stage later
     # sampled_item_ids=filtered_df.select("item_id").distinct().limit(10000) # for simple training later, i limit the number of items is 10k
@@ -103,7 +115,7 @@ def Silver_convert_data_spark(
 
     ## Feature engineering
     #Categorify all categorical columns:
-    if data_type == "train":
+    if not os.path.isdir('../pipeline_transform_model'):
         indexers = []
         # Create StringIndexer instances for each column
         for column in cat_cols:
@@ -120,23 +132,46 @@ def Silver_convert_data_spark(
         # When you rerun this file, you just need load the old pipeline and remember comment feature engineer Part
         pipeline_model= PipelineModel.load('../pipeline_transform_model')
     
-
     # Transform the data:
     drop_cols= cat_cols 
     transformed_df = pipeline_model.transform(filtered_df).drop(*drop_cols)
 
-    # Rename the columns iteratively
+    # Rename to the original columns' name iteratively
     for column in cat_cols:
         transformed_df = transformed_df.withColumnRenamed(f"{column}_index", column)
-    
-    emb_counts={}
-    for column in cat_cols:
-        emb_counts[column]=transformed_df.select(column).distinct().count()
-    print('full data vocab: ',emb_counts)# get vocabsize for each cols
 
-    ## For DLRM model training purpose:
-    #full data vocab: {'user_id': 179853, 'item_id': 1843639, 'item_category': 7900, 'item_shop': 446101, 'item_brand': 191992, 'user_shops': 82869, 'user_profile': 97, 'user_group': 13, 'user_gender': 2, 'user_age': 7, 'user_consumption_2': 3, 'user_is_occupied': 2, 'user_geography': 4, 
-    #'user_intentions': 26184, 'user_brands': 41164, 'user_categories': 5308}
+    transformed_df= transformed_df.withColumn("idx", F.monotonically_increasing_id())
+    windowSpec = Window.orderBy("idx")
+    transformed_df = transformed_df.withColumn("idx", F.row_number().over(windowSpec))
+    ### ADD datetime collumns:
+    # Add a monotonically increasing ID for each row
+    transformed_df = transformed_df.withColumn("row_id", F.monotonically_increasing_id())
+
+    # Create an temporary DataFrame that has size equal to transformed_df
+    timestamps_spark_df = transformed_df.select("user_id_raw")
+    
+    # Register the UDF function
+    random_timestamp_udf = F.udf(generate_random_timestamp, LongType())   
+    timestamps_spark_df = timestamps_spark_df.withColumn("created", random_timestamp_udf())
+    timestamps_spark_df = timestamps_spark_df.orderBy(col("created")).drop("user_id_raw").withColumn("idx", F.monotonically_increasing_id())
+    timestamps_spark_df_with_index = timestamps_spark_df.withColumn("idx", F.row_number().over(windowSpec))
+
+    # Combine the original DataFrame with the timestamps DataFrame
+    transformed_df = transformed_df.join(
+        timestamps_spark_df_with_index, on="idx"
+    ).drop("idx")
+
+    transformed_df = transformed_df.withColumn("created",F.from_unixtime("created"))\
+                                   .withColumn("datetime", F.col("created"))
+
+    # # emb_counts={}
+    # # for column in cat_cols:
+    # #     emb_counts[column]=transformed_df.select(column).distinct().count()
+    # # print('full data vocab: ',emb_counts)# get vocabsize for each cols
+
+    # ## For DLRM model training purpose:
+    # #full data vocab: {'user_id': 179853, 'item_id': 1843639, 'item_category': 7900, 'item_shop': 446101, 'item_brand': 191992, 'user_shops': 82869, 'user_profile': 97, 'user_group': 13, 'user_gender': 2, 'user_age': 7, 'user_consumption_2': 3, 'user_is_occupied': 2, 'user_geography': 4, 
+    # #'user_intentions': 26184, 'user_brands': 41164, 'user_categories': 5308}
     
     #export user feature
     user_df= transformed_df.select(
