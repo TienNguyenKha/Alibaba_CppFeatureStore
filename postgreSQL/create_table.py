@@ -67,34 +67,6 @@ def main():
             datetime TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS userfeature (
-            user_shops INT,
-            user_profile INT,
-            user_group INT,
-            user_gender INT,
-            user_age INT,
-            user_consumption_2 INT,
-            user_is_occupied INT,
-            user_geography INT,
-            user_intentions INT,
-            user_brands INT,
-            user_categories INT,
-            user_id_raw INT,
-            user_id INT,
-            created TIMESTAMP,
-            datetime TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS itemfeature (
-            item_category INT,
-            item_shop INT,
-            item_brand INT,
-            item_id_raw INT,
-            item_id INT,
-            created TIMESTAMP,
-            datetime TIMESTAMP
-        );
-
     """
     try:
         pc.execute_query(create_table_query)
