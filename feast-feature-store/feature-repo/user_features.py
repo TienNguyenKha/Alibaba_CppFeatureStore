@@ -2,9 +2,8 @@ from datetime import timedelta
 from feast.types import Int32
 from feast import Field, FeatureView
 from entities import user_raw
-from data_sources import alicpp_stats_batch_source, user_feature_batch_source
 
-
+from data_sources import alicpp_stats_batch_source
 
 user_features_view = FeatureView(
     name="user_features",
@@ -25,5 +24,5 @@ user_features_view = FeatureView(
         Field(name="user_id", dtype=Int32),
     ],
     online=True,
-    source=user_feature_batch_source
+    source=alicpp_stats_batch_source
 )

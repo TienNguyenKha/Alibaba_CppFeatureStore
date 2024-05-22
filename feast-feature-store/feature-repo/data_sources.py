@@ -14,26 +14,36 @@ alicpp_stats_batch_source = PostgreSQLSource(
     created_timestamp_column="created",
 )
 
-user_feature_batch_source = PostgreSQLSource(
-    name="userfeature",
-    query="SELECT * FROM userfeature",
-    timestamp_field="datetime"
-)
 
-item_feature_batch_source = PostgreSQLSource(
-    name="itemfeature",
-    query="SELECT * FROM itemfeature",
-    timestamp_field="datetime"
+alicpp_stats_stream_source = KafkaSource(
+    name="alicpp_stats_stream_source",
+    kafka_bootstrap_servers="localhost:9092",
+    topic="alicpp_stream_data",
+    timestamp_field="created",
+    batch_source=alicpp_stats_batch_source,
+    message_format=JsonFormat(
+        schema_json="user_id_raw integer,\
+                     item_id_raw integer,\
+                     user_id integer,\
+                     item_id integer,\
+                     item_category integer,\
+                     item_shop integer,\
+                     item_brand integer,\
+                     user_shops integer,\
+                     user_profile integer,\
+                     user_group integer,\
+                     user_gender integer,\
+                     user_age integer,\
+                     user_consumption_2 integer,\
+                     user_is_occupied integer,\
+                     user_geography integer,\
+                     user_intentions integer,\
+                     user_brands integer,\
+                     user_categories integer,\
+                     click integer,\
+                     created timestamp,\
+                     datetime timestamp,\
+                     "
+    ),
+    watermark_delay_threshold=timedelta(minutes=1),
 )
-
-# device_stats_stream_source = KafkaSource(
-#     name="device_stats_stream_source",
-#     kafka_bootstrap_servers="localhost:9092",
-#     topic="device_0",
-#     timestamp_field="created",
-#     batch_source=device_stats_batch_source,
-#     message_format=JsonFormat(
-#         schema_json="created timestamp, device_id integer, feature_5 double, feature_3 double, feature_1 double, feature_8 double, feature_6 double, feature_0 double, feature_4 double"
-#     ),
-#     watermark_delay_threshold=timedelta(minutes=1),
-# )

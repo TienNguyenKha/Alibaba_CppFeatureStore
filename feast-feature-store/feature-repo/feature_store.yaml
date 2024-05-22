@@ -4,10 +4,10 @@ registry: data/registry.db
 provider: local
 online_store:
   type: redis
-  connection_string: "34.73.4.106:6379"
+  connection_string: "localhost:6379"
 offline_store:
   type: postgres
-  host: 34.23.55.65
+  host: localhost
   port: 5432
   database: k6
   db_schema: public
