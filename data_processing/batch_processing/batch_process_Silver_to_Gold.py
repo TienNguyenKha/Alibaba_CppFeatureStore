@@ -13,6 +13,8 @@ from pyspark.sql.functions import current_timestamp
 from pyspark.sql.functions import col
 from pathlib import Path
 from typing import Union
+from pyspark.sql.types import IntegerType
+
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -91,11 +93,9 @@ def Silver_convert_data_spark(
 
     #saving raw_id and add timestamp column
     filtered_df = filtered_df.withColumn("user_id_raw", col("user_id"))\
-                             .withColumn("item_id_raw", col("item_id"))\
-                             .withColumn("created", current_timestamp())\
-                             .withColumn("datetime", current_timestamp())
+                             .withColumn("item_id_raw", col("item_id"))
     
-    ## Uncomment this part, If you wanna do a fast train stage later
+    ### Uncomment this part, If you wanna do a fast train stage later
     # sampled_item_ids=filtered_df.select("item_id").distinct().limit(10000) # for simple training later, i limit the number of items is 10k
     # sampled_item_ids.createOrReplaceTempView('sampled_item_ids')
     # # Filter the original DataFrame based on the sampled item IDs
@@ -125,63 +125,59 @@ def Silver_convert_data_spark(
     drop_cols= cat_cols 
     transformed_df = pipeline_model.transform(filtered_df).drop(*drop_cols)
 
-    # Rename the columns iteratively
+    # Rename the columns to original name
     for column in cat_cols:
         transformed_df = transformed_df.withColumnRenamed(f"{column}_index", column)
     
-    emb_counts={}
-    for column in cat_cols:
-        emb_counts[column]=transformed_df.select(column).distinct().count()
-    print('full data vocab: ',emb_counts)# get vocabsize for each cols
+    changedTypedf = transformed_df.withColumn("user_id_raw", col("user_id_raw").cast(IntegerType()))\
+                                  .withColumn("item_id_raw", col("item_id_raw").cast(IntegerType()))\
+                                  .withColumn("user_id", col("user_id").cast(IntegerType()))\
+                                  .withColumn("item_id", col("item_id").cast(IntegerType()))\
+                                  .withColumn("item_category", col("item_category").cast(IntegerType()))\
+                                  .withColumn("item_shop", col("item_shop").cast(IntegerType()))\
+                                  .withColumn("item_brand", col("item_brand").cast(IntegerType()))\
+                                  .withColumn("user_shops", col("user_shops").cast(IntegerType()))\
+                                  .withColumn("user_profile", col("user_profile").cast(IntegerType()))\
+                                  .withColumn("user_group", col("user_group").cast(IntegerType()))\
+                                  .withColumn("user_gender", col("user_gender").cast(IntegerType()))\
+                                  .withColumn("user_age", col("user_age").cast(IntegerType()))\
+                                  .withColumn("user_consumption_2", col("user_consumption_2").cast(IntegerType()))\
+                                  .withColumn("user_is_occupied", col("user_is_occupied").cast(IntegerType()))\
+                                  .withColumn("user_geography", col("user_geography").cast(IntegerType()))\
+                                  .withColumn("user_intentions", col("user_intentions").cast(IntegerType()))\
+                                  .withColumn("user_brands", col("user_brands").cast(IntegerType()))\
+                                  .withColumn("user_categories", col("user_categories").cast(IntegerType()))\
+                                  .withColumn("click", col("click").cast(IntegerType()))\
+                                  .withColumn("created", current_timestamp())\
+                                  .withColumn("datetime", current_timestamp())
 
-    ## For DLRM model training purpose:
-    #full data vocab: {'user_id': 179853, 'item_id': 1843639, 'item_category': 7900, 'item_shop': 446101, 'item_brand': 191992, 'user_shops': 82869, 'user_profile': 97, 'user_group': 13, 'user_gender': 2, 'user_age': 7, 'user_consumption_2': 3, 'user_is_occupied': 2, 'user_geography': 4, 
-    #'user_intentions': 26184, 'user_brands': 41164, 'user_categories': 5308}
+    ### For DLRM model training purpose:
+    # emb_counts={}
+    # for column in cat_cols:
+    #     emb_counts[column]=changedTypedf.select(column).distinct().count()
+    # print('full data vocab: ',emb_counts)# get vocabsize for each cols
+
+    # ## For DLRM model training purpose:
+    # #full data vocab: {'user_id': 179853, 'item_id': 1843639, 'item_category': 7900, 'item_shop': 446101, 'item_brand': 191992, 'user_shops': 82869, 'user_profile': 97, 'user_group': 13, 'user_gender': 2, 'user_age': 7, 'user_consumption_2': 3, 'user_is_occupied': 2, 'user_geography': 4, 
+    # #'user_intentions': 26184, 'user_brands': 41164, 'user_categories': 5308}
     
-    #export user feature
-    user_df= transformed_df.select(
-        transformed_df["user_shops"], 
-        transformed_df["user_profile"], 
-        transformed_df["user_group"], 
-        transformed_df["user_gender"], 
-        transformed_df["user_age"], 
-        transformed_df["user_consumption_2"], 
-        transformed_df["user_is_occupied"], 
-        transformed_df["user_geography"], 
-        transformed_df["user_intentions"], 
-        transformed_df["user_brands"], 
-        transformed_df["user_categories"], 
-        transformed_df["user_id_raw"], 
-        transformed_df["user_id"],
-        transformed_df["created"],
-        transformed_df["datetime"] ).dropDuplicates(["user_id"])
-    
-    #export item feature
-    item_df= transformed_df.select(
-    transformed_df["created"], 
-    transformed_df["datetime"],
-    transformed_df["item_category"], 
-        transformed_df["item_shop"], 
-        transformed_df["item_brand"], 
-        transformed_df["item_id_raw"], 
-        transformed_df["item_id"]).dropDuplicates(["item_id"])
     
     #write to offline store:
     mode = "overwrite"
     url = f'jdbc:postgresql://{Postgres_config["POSTGRES_HOST"]}:{Postgres_config["POSTGRES_PORT"]}/{Postgres_config["POSTGRES_DB"]}'
     properties = {"user": f'{Postgres_config["POSTGRES_USER"]}',"password": f'{Postgres_config["POSTGRES_PASSWORD"]}',"driver": "org.postgresql.Driver"}
-    transformed_df.write.jdbc(url=url, table="alicpp", mode=mode, properties=properties)
-    user_df.write.jdbc(url=url, table="userfeature", mode=mode, properties=properties)
-    item_df.write.jdbc(url=url, table="itemfeature", mode=mode, properties=properties)
+    changedTypedf.write.jdbc(url=url, table="alicpp", mode=mode, properties=properties)
     #interacted table:
-    clicked_1_df = transformed_df.filter(transformed_df["click"] == 1)
+    clicked_1_df = changedTypedf.filter(changedTypedf["click"] == 1)
     clicked_1_df.write.jdbc(url=url, table="alicppretrieval", mode=mode, properties=properties)
     
-    emb_counts_clicked_1_df={}
-    for column in cat_cols:
-        emb_counts_clicked_1_df[column]=clicked_1_df.select(column).distinct().count()
-    print('clicked_1_df data vocab: ',emb_counts_clicked_1_df)# get vocabsize for each cols, for 2tower model training purpose
-    print(clicked_1_df.count())
+
+    ### For Twotower training purpose:
+    # emb_counts_clicked_1_df={}
+    # for column in cat_cols:
+    #     emb_counts_clicked_1_df[column]=clicked_1_df.select(column).distinct().count()
+    # print('clicked_1_df data vocab: ',emb_counts_clicked_1_df)# get vocabsize for each cols, for 2tower model training purpose
+    # print(clicked_1_df.count())
 
 def ingest_to_gold(
     spark: SparkSession,
