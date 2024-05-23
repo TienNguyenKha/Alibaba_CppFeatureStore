@@ -9,11 +9,17 @@ from feast.infra.contrib.stream_processor import get_stream_processor_object
 from pyspark.sql import SparkSession
 
 
-os.environ[
-    "PYSPARK_SUBMIT_ARGS"
-] = "--packages=org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.0 pyspark-shell"
-spark = SparkSession.builder.master("local").appName("feast-spark").getOrCreate()
-spark.conf.set("spark.sql.shuffle.partitions", 5)
+spark = (
+        SparkSession.builder.master("local[*]")
+        # .config("spark.jars.packages","org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.1")
+        .config("spark.jars.packages","org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.1")
+        .config(
+            "spark.jars.repositories",
+            "https://maven-central.storage-download.googleapis.com/maven2/",
+        )
+        .appName("Ingest stream to onlinestore")
+        .getOrCreate()
+    )
 
 # Initialize the feature store
 store = FeatureStore(repo_path=constants.REPO_PATH)
@@ -54,7 +60,7 @@ item_query = item_processor.ingest_stream_feature_view()
 # item_query = item_processor.ingest_stream_feature_view(PushMode.OFFLINE)
 
 # , and use this below command to stop ingestion job
-# item_query.stop()
+item_query.stop()
 
 
 # Initialize the user stream view from our feature store
@@ -73,4 +79,4 @@ user_query = user_processor.ingest_stream_feature_view()
 # user_query = user_processor.ingest_stream_feature_view(PushMode.OFFLINE)
 
 # , and use this below command to stop ingestion job
-# user_query.stop()
+user_query.stop()
